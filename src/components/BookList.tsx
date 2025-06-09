@@ -44,7 +44,7 @@ export default function BookList({ refreshTrigger, searchedBook }: BookListProps
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800">Listado de Libros</h2>
           <p className="mt-1 text-sm text-gray-500">
-            {books.length} {books.length === 1 ? 'libro registrado' : 'libros registrados'}
+            {Array.isArray(books) && books.length} {Array.isArray(books) && books.length === 1 ? 'libro registrado' : 'libros registrados'}
           </p>
         </div>
 
@@ -52,7 +52,7 @@ export default function BookList({ refreshTrigger, searchedBook }: BookListProps
           <div className="p-6 flex justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
-        ) : books.length === 0 ? (
+        ) : !Array.isArray(books) || books.length === 0 ? (
           <div className="p-6 text-center">
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
@@ -93,7 +93,7 @@ export default function BookList({ refreshTrigger, searchedBook }: BookListProps
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {books.map((book) => (
+                {Array.isArray(books) && books.map((book) => (
                   <tr key={book.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{book.title}</div>
