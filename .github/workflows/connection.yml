@@ -1,4 +1,4 @@
-name: Build and Push Docker image
+name: Deploy to Remote Server
 
 on:
   push:
@@ -6,17 +6,50 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  deploy:
     runs-on: self-hosted
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u fernandonov21 --password-stdin
+      - name: List files (debug)
+        run: ls -la
 
-      - name: Build Docker image
-        run: docker build -t ghcr.io/fernandonov21/mi-app:latest .
+      - name: Deploy via SSH (Cloudflare)
+        shell: bash
+        run: |
+          echo "📡 Conectando al servidor..."
+          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" soportefing@ssh.distribuidauce.org << 'EOF'
+          echo "✅ Conexión SSH exitosa"
+          # Asegurar que el directorio exista y cambiar a él
+          mkdir -p /home/soportefing/app && cd /home/soportefing/app
 
-      - name: Push Docker image
-        run: docker push ghcr.io/fernandonov21/mi-app:latest
+          # Borrar el proyecto anterior de forma segura
+          if [ "$PWD" = "/home/soportefing/app" ]; then
+            echo "🧹 Limpiando el directorio /home/soportefing/app..."
+            rm -rf ./*
+            echo "✅ Directorio limpiado."
+          else
+            echo "❌ Error: No se pudo cambiar al directorio /home/soportefing/app. No se borrará nada."
+            exit 1
+          fi
+          exit
+          EOF
+
+      - name: Subir archivos al servidor
+        shell: bash
+        run: |
+          scp -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" -r ./* soportefing@ssh.distribuidauce.org:/home/soportefing/app/
+
+      - name: Iniciar contenedor remoto
+        shell: bash
+        run: |
+          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" soportefing@ssh.distribuidauce.org << 'EOF'
+          cd /home/soportefing/app
+          docker build -t mi-app:latest .
+          docker stop mi-app || true
+          docker rm mi-app || true
+          docker run -d --name mi-app -p 80:80 mi-app:latest
+          echo "🚀 Aplicación desplegada exitosamente"
+          exit
+          EOF
