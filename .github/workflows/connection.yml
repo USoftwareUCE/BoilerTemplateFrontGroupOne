@@ -14,10 +14,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log in to GitHub Container Registry (GHCR)
+      - name: Install cloudflared
+        run: |
+          sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+          sudo chmod +x /usr/local/bin/cloudflared
+
+      - name: Log in to GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u fernandonov21 --password-stdin
 
-      - name: Build and push Docker image to GHCR
+      - name: Build and push Docker image
         run: |
           docker build -t ghcr.io/fernandonov21/my-app:latest .
           docker push ghcr.io/fernandonov21/my-app:latest
