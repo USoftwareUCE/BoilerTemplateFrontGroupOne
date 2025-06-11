@@ -1,0 +1,13 @@
+name: Test SSH Connection
+on:
+  push:
+    branches:
+      - main
+jobs:
+  test-ssh:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - name: SSH via Cloudflare Access
+        run: |
+          ssh -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" soportefing@ssh.distribuidauce.org 'whoami'
