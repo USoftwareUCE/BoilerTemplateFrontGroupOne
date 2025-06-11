@@ -1,4 +1,4 @@
-name: Deploy to Ubuntu Server via SSH
+name: Build and Push Docker image
 
 on:
   push:
@@ -6,28 +6,17 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-push:
     runs-on: self-hosted
-    timeout-minutes: 15
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry (GHCR)
-        run: echo "ghp_5Pzn0xQSxgISYB50VdOBJrWRqbrtxJ2f99r9" | docker login ghcr.io -u fernandonov21 --password-stdin
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u fernandonov21 --password-stdin
 
-      - name: Build and push Docker image to GHCR
-        run: |
-          docker build -t ghcr.io/fernandonov21/my-app:latest .
-          docker push ghcr.io/fernandonov21/my-app:latest
+      - name: Build Docker image
+        run: docker build -t ghcr.io/fernandonov21/mi-app:latest .
 
-      - name: Deploy to remote server via SSH using Cloudflare Access
-        run: |
-          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" \
-          soportefing@ssh.distribuidauce.org << 'EOF'
-          docker pull ghcr.io/fernandonov21/my-app:latest
-          docker stop my-app || true
-          docker rm my-app || true
-          docker run -d --name my-app -p 80:80 ghcr.io/fernandonov21/my-app:latest
-                EOF
+      - name: Push Docker image
+        run: docker push ghcr.io/fernandonov21/mi-app:latest
