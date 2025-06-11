@@ -1,4 +1,4 @@
-name: Deploy to Ubuntu Server via Cloudflare SSH
+name: Deploy to Ubuntu Server via SSH
 
 on:
   push:
@@ -14,22 +14,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install cloudflared
-        run: |
-          sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
-          sudo chmod +x /usr/local/bin/cloudflared
+      - name: Log in to GitHub Container Registry (GHCR)
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
 
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u fernandonov21 --password-stdin
-
-      - name: Build and push Docker image
+      - name: Build and push Docker image to GHCR
         run: |
           docker build -t ghcr.io/fernandonov21/my-app:latest .
           docker push ghcr.io/fernandonov21/my-app:latest
 
-      - name: Deploy on server via Cloudflare SSH
+      - name: Deploy to remote server via SSH using Cloudflare Access
         run: |
-          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" soportefing@ssh.distribuidauce.org << 'EOF'
+          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" \
+          soportefing@ssh.distribuidauce.org << EOF
             docker pull ghcr.io/fernandonov21/my-app:latest
             docker stop my-app || true
             docker rm my-app || true
