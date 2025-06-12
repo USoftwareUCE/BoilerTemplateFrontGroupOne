@@ -36,14 +36,15 @@ jobs:
           docker build -t $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest .
           docker push $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
 
-      - name: Deploy via SSH (Cloudflare)
+      - name: Deploy via SSH
         run: |
-          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" \
-          $SERVER_SSH << 'EOF'
-          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u $DOCKER_USER --password-stdin
-          docker pull $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
-          docker stop $CONTAINER_NAME || true
-          docker rm $CONTAINER_NAME || true
-          docker run -d --name $CONTAINER_NAME -p 80:80 $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
+          # Pasar cloudflared al PATH temporalmente (si no está instalado globalmente)
+          echo "$(pwd)" >> $GITHUB_PATH
+          ./cloudflared --version  # Verificar que funciona
+          
+          # Conexión SSH con Cloudflare
+          ssh -v -o "ProxyCommand=./cloudflared access ssh --hostname ssh.distribuidauce.org" \
+          soportefing@ssh.distribuidauce.org << 'EOF'
+          echo "¡Conectado al servidor!"
           exit
           EOF
