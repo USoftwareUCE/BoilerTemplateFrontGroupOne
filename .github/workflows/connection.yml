@@ -17,42 +17,22 @@ jobs:
           curl -LO https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
-      - name: Generate SSH Config (cleaned)
-        env:
-          SSH_HOST: ssh.distribuidauce.org
-        run: |
-          mkdir -p ~/.ssh
-          cloudflared access ssh-config --hostname $SSH_HOST > ~/.ssh/config
-          sed -i '/AddKeysToAgent/d' ~/.ssh/config
-          sed -i '/UseKeychain/d' ~/.ssh/config
-          chmod 600 ~/.ssh/config
-
-
-
       - name: Login to GHCR
-        env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "fernandonov21" --password-stdin
 
       - name: Build and Push Docker image
         run: |
-          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest .
-          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest
+          docker build -t ghcr.io/fernandonov21/boiler-template-front-group-one:latest .
+          docker push ghcr.io/fernandonov21/boiler-template-front-group-one:latest
 
-      - name: Deploy on remote server
-        env:
-          SSH_HOST: ssh.distribuidauce.org
-          SSH_USER: soportefing
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          IMAGE_NAME: boiler-template-front-group-one
+      - name: Deploy on remote server via cloudflared
         run: |
-          ssh "$SSH_USER@$SSH_HOST" << 'EOF'
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-            docker pull ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
+          cloudflared access ssh --hostname ssh.distribuidauce.org --command '
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "fernandonov21" --password-stdin
+            docker pull ghcr.io/fernandonov21/boiler-template-front-group-one:latest
             docker stop mi-app || true
             docker rm mi-app || true
-            docker run -d --name mi-app -p 80:80 ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
+            docker run -d --name mi-app -p 80:80 ghcr.io/fernandonov21/boiler-template-front-group-one:latest
             echo "🚀 App desplegada correctamente"
-          EOF
+          '
