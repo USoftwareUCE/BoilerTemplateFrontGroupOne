@@ -1,4 +1,4 @@
-name: Deploy to Server via GHCR
+name: Deploy to Server via GHCR with Cloudflare Access SSH
 
 on:
   push:
@@ -7,6 +7,15 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      SSH_HOST: ssh.distribuidauce.org
+      SSH_USER: soportefing
+      IMAGE_NAME: boiler-template-front-group-one
 
     steps:
       - name: Checkout Code
@@ -18,28 +27,29 @@ jobs:
           sudo dpkg -i cloudflared-linux-amd64.deb
 
       - name: Login to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
         run: |
-          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "fernandonov21" --password-stdin
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
       - name: Build and Push Docker image
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
         run: |
-          docker build -t ghcr.io/fernandonov21/boiler-template-front-group-one:latest .
-          docker push ghcr.io/fernandonov21/boiler-template-front-group-one:latest
+          docker build -t ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest .
+          docker push ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
 
-      - name: Deploy on remote server via cloudflared
+      - name: Deploy on remote server
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          cloudflared access ssh --hostname ssh.distribuidauce.org --command '
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "fernandonov21" --password-stdin
-            docker pull ghcr.io/fernandonov21/boiler-template-front-group-one:latest
-            if docker ps -a --format '{{.Names}}' | grep -q '^mi-app$'; then
-              docker stop mi-app || true
-              # NO borramos el contenedor para poder ver logs en caso de fallo
-              # docker rm mi-app || true
-            fi
-
-            docker run -d --name mi-app -p 80:80 ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest || true
-
-            echo "== Logs del contenedor mi-app =="
-            docker logs mi-app || echo "Contenedor no existe o no se pudo iniciar"
-
-          '
+          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST "
+            echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$GHCR_USERNAME\" --password-stdin &&
+            docker pull ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest &&
+            docker stop mi-app || true &&
+            docker rm mi-app || true &&
+            docker run -d --name mi-app -p 80:80 ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest &&
+            echo '🚀 App desplegada correctamente'
+          "
