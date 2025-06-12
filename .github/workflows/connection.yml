@@ -17,6 +17,14 @@ jobs:
           curl -LO https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
+      - name: Generate SSH Config with Cloudflare Access
+        env:
+          SSH_HOST: ssh.distribuidauce.org
+        run: |
+          mkdir -p ~/.ssh
+          cloudflared access ssh-config --hostname $SSH_HOST >> ~/.ssh/config
+          cat ~/.ssh/config  # (Opcional, solo para debug, puedes eliminar esto si prefieres)
+
       - name: Login to GHCR
         env:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
@@ -36,7 +44,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           IMAGE_NAME: boiler-template-front-group-one
         run: |
-          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST << EOF
+          ssh "$SSH_USER@$SSH_HOST" << 'EOF'
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             docker pull ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
             docker stop mi-app || true
