@@ -1,58 +1,44 @@
-name: Deploy Docker Container to Server
+name: Deploy to Server via GHCR
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: boiler-template-front-group-one # Todo en minúsculas
-  DOCKER_USER: fernandonov21 # Tu usuario de Docker Hub/GHCR
-  SERVER_USER: soportefing
-  SERVER_HOST: ssh.distribuidauce.org
-  CONTAINER_NAME: mi-app
-  CONTAINER_PORT: 80
+  IMAGE_NAME: "boiler-template-front-group-one"  # ¡TODO EN MINÚSCULAS!
+  DOCKER_USER: "fernandonov21"  # Tu usuario de GitHub
+  CONTAINER_NAME: "mi-app"
+  SERVER_SSH: "soportefing@ssh.distribuidauce.org"
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      packages: write  # ¡IMPORTANTE!
+
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ env.DOCKER_USER }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
+      - name: Login to GHCR
         run: |
-          # Convertir todo a minúsculas
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u $DOCKER_USER --password-stdin
+
+      - name: Build and Push
+        run: |
           docker build -t $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest .
           docker push $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
 
-      - name: Deploy to server via SSH
+      - name: Deploy via SSH (Cloudflare)
         run: |
-          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname $SERVER_HOST" \
-          $SERVER_USER@$SERVER_HOST << 'EOF'
-          # Comandos en el servidor remoto
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $DOCKER_USER --password-stdin
-
+          ssh -tt -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" \
+          $SERVER_SSH << 'EOF'
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u $DOCKER_USER --password-stdin
           docker pull $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
-
           docker stop $CONTAINER_NAME || true
           docker rm $CONTAINER_NAME || true
-
-          docker run -d \
-            --name $CONTAINER_NAME \
-            -p $CONTAINER_PORT:80 \
-            --restart unless-stopped \
-            $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
-
-          echo "✅ Despliegue completado!"
+          docker run -d --name $CONTAINER_NAME -p 80:80 $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
           exit
           EOF
