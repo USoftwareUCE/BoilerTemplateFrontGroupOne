@@ -17,15 +17,16 @@ jobs:
           curl -LO https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
-      - name: Generate SSH Config with Cloudflare Access
+      - name: Generate SSH Config (cleaned)
         env:
           SSH_HOST: ssh.distribuidauce.org
         run: |
           mkdir -p ~/.ssh
-          cloudflared access ssh-config --hostname $SSH_HOST \
-            | grep -v "AddKeysToAgent" \
-            | grep -v "UseKeychain" > ~/.ssh/config
+          cloudflared access ssh-config --hostname $SSH_HOST > ~/.ssh/config
+          sed -i '/AddKeysToAgent/d' ~/.ssh/config
+          sed -i '/UseKeychain/d' ~/.ssh/config
           chmod 600 ~/.ssh/config
+
 
 
       - name: Login to GHCR
