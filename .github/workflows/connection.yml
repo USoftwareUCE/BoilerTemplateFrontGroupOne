@@ -6,15 +6,16 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest  # usa ubuntu-latest para que docker y ghcr funcionen bien
-
-    permissions:
-      contents: read
-      packages: write
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Install cloudflared
+        run: |
+          curl -LO https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
 
       - name: Login to GHCR
         env:
@@ -35,7 +36,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           IMAGE_NAME: boiler-template-front-group-one
         run: |
-          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST << 'EOF'
+          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST << EOF
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             docker pull ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
             docker stop mi-app || true
@@ -43,4 +44,3 @@ jobs:
             docker run -d --name mi-app -p 80:80 ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
             echo "🚀 App desplegada correctamente"
           EOF
-
