@@ -35,7 +35,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           IMAGE_NAME: boiler-template-front-group-one
         run: |
-          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST << EOF
+          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST << 'EOF'
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             docker pull ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
             docker stop mi-app || true
@@ -43,3 +43,4 @@ jobs:
             docker run -d --name mi-app -p 80:80 ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
             echo "🚀 App desplegada correctamente"
           EOF
+
