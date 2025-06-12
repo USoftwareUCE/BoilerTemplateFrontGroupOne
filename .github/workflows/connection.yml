@@ -22,8 +22,11 @@ jobs:
           SSH_HOST: ssh.distribuidauce.org
         run: |
           mkdir -p ~/.ssh
-          cloudflared access ssh-config --hostname $SSH_HOST >> ~/.ssh/config
-          cat ~/.ssh/config  # (Opcional, solo para debug, puedes eliminar esto si prefieres)
+          cloudflared access ssh-config --hostname $SSH_HOST \
+            | grep -v "AddKeysToAgent" \
+            | grep -v "UseKeychain" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
 
       - name: Login to GHCR
         env:
