@@ -36,15 +36,6 @@ jobs:
           docker build -t $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest .
           docker push $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
 
-      - name: Deploy via SSH
+      - name: SSH via Cloudflare Access
         run: |
-          # Pasar cloudflared al PATH temporalmente (si no está instalado globalmente)
-          echo "$(pwd)" >> $GITHUB_PATH
-          ./cloudflared --version  # Verificar que funciona
-          
-          # Conexión SSH con Cloudflare
-          ssh -v -o "ProxyCommand=./cloudflared access ssh --hostname ssh.distribuidauce.org" \
-          soportefing@ssh.distribuidauce.org << 'EOF'
-          echo "¡Conectado al servidor!"
-          exit
-          EOF
+          ssh -o "ProxyCommand=cloudflared access ssh --hostname ssh.distribuidauce.org" soportefing@ssh.distribuidauce.org 'whoami'
