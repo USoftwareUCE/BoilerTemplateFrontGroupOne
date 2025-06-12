@@ -4,34 +4,25 @@ on:
   push:
     branches: [ main ]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: "boiler-template-front-group-one"  # ¡TODO EN MINÚSCULAS!
-  DOCKER_USER: "fernandonov21"  # Tu usuario de GitHub
-  CONTAINER_NAME: "mi-app"
-  SERVER_SSH: "soportefing@ssh.distribuidauce.org"
-
 jobs:
   build-and-deploy:
     runs-on: self-hosted
     permissions:
       contents: read
-      packages: write  # ¡IMPORTANTE!
+      packages: write  # Necesario para publicar en GHCR
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Login to GHCR
-        env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      - name: Login to GitHub Container Registry (GHCR)
         run: |
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u $DOCKER_USER --password-stdin
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
-      - name: Build and Push
+      - name: Build and Push Docker Image
         run: |
-          docker build -t $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest .
-          docker push $REGISTRY/$DOCKER_USER/$IMAGE_NAME:latest
+          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest .
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest
 
       - name: SSH via Cloudflare Access
         run: |
