@@ -1,15 +1,45 @@
-name: GHCR Login Test
+name: Deploy to Server via GHCR
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
-  test-login:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: ubuntu-latest  # usa ubuntu-latest para que docker y ghcr funcionen bien
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - name: Login to GHCR
-        run: |
-          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-          
+      - name: Login to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker image
+        run: |
+          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest .
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest
+
+      - name: Deploy on remote server
+        env:
+          SSH_HOST: ssh.distribuidauce.org
+          SSH_USER: soportefing
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          IMAGE_NAME: boiler-template-front-group-one
+        run: |
+          ssh -o "ProxyCommand=cloudflared access ssh --hostname $SSH_HOST" $SSH_USER@$SSH_HOST << EOF
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            docker pull ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
+            docker stop mi-app || true
+            docker rm mi-app || true
+            docker run -d --name mi-app -p 80:80 ghcr.io/$GHCR_USERNAME/$IMAGE_NAME:latest
+            echo "🚀 App desplegada correctamente"
+          EOF
