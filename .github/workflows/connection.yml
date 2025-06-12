@@ -40,7 +40,7 @@ jobs:
           $SERVER_USER@$SERVER_HOST << 'EOF'
           # Comandos que se ejecutarán en el servidor remoto
           echo "🔍 Logging in to GitHub Container Registry..."
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u fernandonov21 --password-stdin
 
           echo "🚀 Pulling latest container image..."
           docker pull $REGISTRY/$IMAGE_NAME:latest
