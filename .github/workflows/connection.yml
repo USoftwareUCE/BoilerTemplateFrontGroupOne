@@ -27,4 +27,4 @@ jobs:
           docker stop mi-app || true
           docker rm mi-app || true
           docker pull ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest
-          docker run -d --name mi-app -p 80:80 ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest
+          docker run -d --name mi-app -p 8080:80 ghcr.io/${{ secrets.GHCR_USERNAME }}/boiler-template-front-group-one:latest
